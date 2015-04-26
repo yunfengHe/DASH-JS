@@ -1,0 +1,6 @@
+else
+				if(){
+					
+				}				
+				do something, like comparison of bandwidth change.	
+				or check if we had chosen a bw too low, we can write a counter loop here, to calculate average bw every two segment, define time reference and bw reference at class variable. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

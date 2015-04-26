@@ -24,11 +24,16 @@
 
 var steppingY = 200; // 200 kbit steps for the Y-axis
 var steppingX = 15; // 15 second steps
-function fPlot(_canvas, period, width, height) // period will give us the max period length of the function to plot ...
+function fPlot(_canvas, period, width, height) // period will give us the max period length of the function to plot ...// this is the object constructor
 {
 	
 	
+  this.str1 = "";
+  this.str2 = "";  	
+	//$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+	
 	this.canvas = _canvas;
+	//this.canvas1 = _canvas1;
 	// we will have to check the time!
 	this.startTime = new Date().getTime();
 	this.f = new Array();
@@ -61,29 +66,86 @@ fPlot.prototype.initNewFunction = function (type) {
 }
 
 fPlot.prototype.updateOnlyPlaybackTime = function(value, type)
-{
-    
+{   
     
     
 }
 
-fPlot.prototype.update = function(value, type)
+fPlot.prototype.update = function(value, type)//$$ BandWidth value will be the passed argument for value, type is 0 or 1 or 2, two bw lines and a vertical line to draw
 {
-	this.f[type].values[this.f[type].cnt] = value;	
-	this.f[type].timeStamps[this.f[type].cnt] = new Date().getTime();
-	this.f[type].cnt++;
+	this.f[type].values[this.f[type].cnt] = value;	// an array of bw values
+	this.f[type].timeStamps[this.f[type].cnt] = new Date().getTime();//$$ return milliseconds since the epoch
+	
+
+	this.tmp = this.f[type].values[this.f[type].cnt]/1000;//convert the bw value to kb-kbit
+	this.tmp = Math.round(this.tmp*100)/100; //returns 28.45
+	//this.tmptime = this.f[type].timeStamps[this.f[type].cnt] - 1369042275000;
+	//this.tmptime = (this.tmptime/100).toFixed(0);// to the precision of tens of seconds and emit the decimal portion
+	this.tmptime = this.f[type].timeStamps[this.f[type].cnt];
+	this.tmptime = (this.tmptime/1000).toFixed(2);// to the precision of seconds and emit the decimal portion
+  if (type == 0){
+  this.writeDocA(this.tmptime,this.tmp);
+  }
+  if (type == 1){
+  this.writeDocB(this.tmptime,this.tmp);
+ 	}
+ 	//$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+  this.f[type].cnt++;
 	this.plot();
 }
 
+
+fPlot.prototype.writeDocA = function(timepoint,bwValue)
+{ 	  
+ this.str1 = this.str1 + timepoint + "\t" + bwValue + "kb" + "\n";
+}
+
+fPlot.prototype.writeDocB = function(timepoint,bwValue)
+{
+ this.str2 = this.str2 + timepoint + "\t" + bwValue + "kb" + "\n"; 
+}
+
+
+
+fPlot.prototype.closefile = function()//&& reason for global variable: by the time we call closefile, fplot object already called plot and may leave some variable's memory recycled.
+{
+	myzip = new JSZip();	
+	var portNumber = new String();  
+	portNumber = window.location.host;  
+	portNumber = portNumber.substring(portNumber.indexOf(":") + 1);
+	//portNumber = window.location.port ;
+	myzip.file("EstimatedV"+portNumber+".txt", this.str1);
+  myzip.file("displayedV"+portNumber+".txt", this.str2);
+  myzip.file("bufferRecord"+portNumber+".txt",bufferstr);
+  myzip.file("GearRecord"+portNumber+".txt",Gearstr);
+  var HitRate = (HitCount/SegmentCount);
+  var HitRateFar = (HitCountFar/SegmentCount);
+  //&& HitRatioStr = HitRatioStr + (new Date().getTime()/1000).toFixed(2) + "\t" + HitRate + "\n";  
+  //&& myzip.file("HitRatio"+portNumber+".txt",HitRatioStr);
+  myzip.file("CacheInfo"+portNumber+".txt",CacheInfoStr);
+  myzip.file("CacheFarInfo"+portNumber+".txt",CacheInfoStrFar);
+  Statisticstr = Statisticstr + "switching count:" + "\t" + SwitchCount + "\n" + "BufferUnderrun count:"+ "\t" + UnderrunCount + "\n" + "CacheL2HitRatio:"+ "\t" + HitRate + "\n" + "CacheL1HitRatio:"+ "\t" + HitRateFar + "\n"+ "TotalSegments:"+ "\t" + SegmentCount + "\n"+ "HitCountL1:"+ "\t" + HitCountFar + "\n"+ "HitCountL2:"+ "\t" + HitCount + "\n";  
+  myzip.file("Statistic"+portNumber+".txt",Statisticstr);   
+  downloadcontent = myzip.generate();
+  location.href="data:application/zip;base64,"+downloadcontent;
+}
+
+
 fPlot.prototype.plot = function()
 {
-	// clear the canvas
-	
+	// clear the canvas	
 	this.canvas.translate(-50, -(this.height));
 	this.canvas.setTransform(1,0,0,1,0,0);
 	this.canvas.clearRect(0,0,this.width,this.height);
+	
+	//$$ Newly added lines to make the canvas of white background instead of transparent!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	this.canvas.fillStyle="#FFFFFF";
+	this.canvas.fillRect(0,0,this.width,this.height);
+	
 	this.canvas.translate(50, this.height-25); //translate the origin to the bottom left
 	this.canvas.scale(1, -1);
+	
+	
 	// find the maximum for Y scaling
 	var maxY = 0, maxX = 0;
 	for(var n = 0; n < this.f.length; n++)
@@ -92,7 +154,7 @@ fPlot.prototype.plot = function()
 	
 		for(var i=0;i<this.f[n].values.length;i++)
 		{
-            if(n!= 2)
+            if(n!= 2) //$$ if type is not 2 and this is the bw line, blue or red
             {
                 if((this.f[n].values[i]/1024) > maxY) maxY = (this.f[n].values[i])/1024;
                 if((this.f[n].timeStamps[i] - this.startTime)/60 > maxX) maxX = (this.f[n].timeStamps[i] - this.startTime)/60;		
@@ -112,6 +174,7 @@ fPlot.prototype.plot = function()
 	this.canvas.lineTo(0,5000000);
 	this.canvas.stroke();
 	this.canvas.closePath();
+		
 	
 	//plot axis description
 	this.canvas.save();
@@ -148,22 +211,21 @@ fPlot.prototype.plot = function()
 		this.canvas.fillStyle    = '#ff0000';
 		this.canvas.font         = '10px sans-serif';
 		this.canvas.textBaseline = 'top';
-		var metrics = this.canvas.measureText("Estimated Bandwidth");
+		var metrics = this.canvas.measureText("Estimated Bandwidth");//metrics holds the width of the text "Esti...bandwi.." in pixel
 	
-		this.canvas.fillText("Estimated Bandwidth", 10 + metrics.width/2, this.height - 15);
+		this.canvas.fillText("Estimated Bandwidth", 10 + metrics.width/2, this.height - 15);// the second and third argument is for the location of the drawn text.
 		
 		this.canvas.fillStyle    = '#0000ff';
 		this.canvas.font         = '10px sans-serif';
 		this.canvas.textBaseline = 'top';
-	//	var metrics = this.canvas.measureText("Representation Bandwidth");
+	//var metrics = this.canvas.measureText("Representation Bandwidth");
 	
 		this.canvas.fillText("Representation Bandwidth", 10 + metrics.width*2, this.height - 15);
-	this.canvas.restore();
-	
-
+		this.canvas.restore();
 	
 	
-	
+	//$$the plot function is actually the same for both the red and blue line, it's the notify call that differs. 
+	//$$whenever a notify is received, all three tracks are ploted/refreshed, no matter if there's an update correspond to that track.
 	// plot all tracked functions
 	for(var n = 0; n < this.f.length; n++)
 	{
@@ -174,7 +236,7 @@ fPlot.prototype.plot = function()
             this.canvas.beginPath();
             // move the line within the segment ..
             // first get the right segment, we know each is about 2 seconds ...
-            segment_time = 2;
+            segment_time = 1;
             m = 0;
             for(i=0; i < this.f[0].timeStamps.length; i++)
             {
@@ -183,7 +245,7 @@ fPlot.prototype.plot = function()
                     break;                    
                 }
                 
-                segment_time += 2;
+                segment_time += 1;
                 m = i;
             }
             // estimate the movement of our bar ...
@@ -193,8 +255,8 @@ fPlot.prototype.plot = function()
             move = ( (this.f[0].timeStamps[m+1] - this.startTime) - (this.f[0].timeStamps[m] - this.startTime) ) -  ( ( (this.f[0].timeStamps[m+1] - this.startTime) - (this.f[0].timeStamps[m] - this.startTime) ) ) /  ( ( ( ( 2000 ) ) ) ) * ( ( (segment_time - this.f[n].values[this.f[n].cnt-1]) *1000) );
            // console.log(((this.f[0].timeStamps[m] - this.startTime) + (this.f[n].values[this.f[n].cnt-1] - segment_time) )/60);
             
-            this.canvas.moveTo(((((this.f[0].timeStamps[m] - this.startTime) + move )/60)/maxX)*this.graphwidth, 0);
-            this.canvas.lineTo(((((this.f[0].timeStamps[m] - this.startTime)  + move )/60)/maxX)*this.graphwidth, this.graphheight);
+            this.canvas.moveTo(((((this.f[0].timeStamps[m] - this.startTime) + move )/60)/maxX)*this.graphwidth, 0);//$$ move to the originating point before stroke, the argument is a coordinate
+            this.canvas.lineTo(((((this.f[0].timeStamps[m] - this.startTime)  + move )/60)/maxX)*this.graphwidth, this.graphheight);//$$ draw a line bridging the originating point and the lineTo point
             this.canvas.stroke();
             this.canvas.closePath();
            // console.log("m: " + m + "f:" + (((this.f[0].timeStamps[m] - this.startTime)/60)/maxX)*this.graphwidth + "segment_t:" + segment_time);
@@ -202,8 +264,8 @@ fPlot.prototype.plot = function()
             continue;
         }
         
-        
-		if(n==0) this.canvas.strokeStyle = "rgba(255,0,0,1)";
+       
+		if(n==0) this.canvas.strokeStyle = "rgba(255,0,0,1)";//$$rgba(255,0,0,1) } /* solid red with no transparency*/
 		if(n==1) this.canvas.strokeStyle = "rgba(0,0,255,1)";
 	//	this.canvas.strokeStyle = "rgba(0,0,0,1)";
 		this.canvas.beginPath();
@@ -217,5 +279,6 @@ fPlot.prototype.plot = function()
 		this.canvas.stroke();
 		this.canvas.closePath();
 
-	}
+	}	
+	
 }

@@ -46,15 +46,16 @@ function checkSourceError(videoTag)
 }
 
 
-function sourceBufferAppend(mediaSource, id, data)
+function sourceBufferAppend(mediaSource, id, data) // fixed by author in july, 2014
 {
-    mediaSource.sourceBuffers[id].append(data);
+   //mediaSource.sourceBuffers[id].updating = true; //++
+   mediaSource.sourceBuffers[id].append(data);
+   //mediaSource.sourceBuffers[id].updating = false; //++
 }
 
 
 function addSourceBuffer(mediaSource, id, type)
 {
-
 	mediaSource.addSourceBuffer(type);
 }
 
